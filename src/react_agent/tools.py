@@ -59,6 +59,8 @@ _OPS = {
     ast.USub: operator.neg,
 }
 
+_MAX_INT_BITS = 4096
+
 
 def _eval(node: ast.AST) -> float:
     if isinstance(node, ast.Constant) and isinstance(node.value, int | float):
@@ -67,7 +69,13 @@ def _eval(node: ast.AST) -> float:
         left, right = _eval(node.left), _eval(node.right)
         if isinstance(node.op, ast.Pow) and abs(right) > 100:
             raise ToolError("exponent too large")
-        return _OPS[type(node.op)](left, right)
+        if (isinstance(node.op, ast.Pow) and isinstance(left, int) and isinstance(right, int)
+                and right > 0 and abs(left).bit_length() * right > _MAX_INT_BITS):
+            raise ToolError("result too large")
+        result = _OPS[type(node.op)](left, right)
+        if isinstance(result, int) and result.bit_length() > _MAX_INT_BITS:
+            raise ToolError("result too large")
+        return result
     if isinstance(node, ast.UnaryOp) and type(node.op) in _OPS:
         return _OPS[type(node.op)](_eval(node.operand))
     raise ToolError("unsupported expression")

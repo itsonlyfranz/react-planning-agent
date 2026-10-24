@@ -47,3 +47,16 @@ def test_prompt_contains_prior_observations(make_agent):
     agent.run("t")
     second_prompt = [p for purpose, p in llm.calls if purpose == "think"][1]
     assert "Observation 1: Paris has about 2.1 million" in second_prompt
+
+
+
+def test_reflections_survive_recursion_limit_recovery(make_agent):
+    agent, _ = make_agent({
+        "think": [act("calculator", expression=f"{n}+1") for n in range(50)],
+        "reflect": [{"on_track": False, "assessment": "stalling", "next_hint": "just answer"}],
+        "degrade": ["partial"],
+    }, max_iterations=40, recursion_limit=8)
+    r = agent.run("t")
+    assert any("recursion limit" in w for w in r.warnings)
+    assert r.steps and all(s.reflection is not None for s in r.steps)
+    assert len(r.steps) == 2 and "just answer" in r.steps[0].observation

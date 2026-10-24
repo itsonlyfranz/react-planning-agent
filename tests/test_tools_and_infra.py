@@ -18,6 +18,13 @@ def test_calculator_basic_and_safe():
             calculator(bad)
 
 
+@pytest.mark.parametrize("expr", ["((((2**100)**100)**100)**100)**100", "(10**99)**100",
+                                  "*".join(["(9**99)"] * 14)])
+def test_calculator_rejects_oversized_results(expr):
+    with pytest.raises(ToolError, match="too large"):
+        calculator(expr)
+
+
 def test_registry_wraps_tool_crashes_and_bad_args():
     reg = default_registry()
     with pytest.raises(ToolError):

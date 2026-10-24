@@ -245,19 +245,19 @@ class ReActAgent:
 
     def _reflect(self, state: AgentState) -> dict:
         step = state["steps"][-1]
-        warnings = list(state["warnings"])
         try:
             raw = self.llm.complete(
                 purpose="reflect", system=REFLECT_SYSTEM,
                 prompt=self._scratchpad(state["task"], state["steps"]),
                 max_tokens=self.config.max_tokens)
-            step.reflection = parse_model(raw, Reflection)
+            reflection = parse_model(raw, Reflection)
         except (LLMError, ParseError) as exc:  # advisory: never fatal
-            warnings.append(f"reflection skipped: {exc}")
-        else:
-            if not step.reflection.on_track and step.reflection.next_hint:
-                step.observation += f" [reflection hint: {step.reflection.next_hint}]"
-        return {"warnings": warnings}
+            return {"warnings": [*state["warnings"], f"reflection skipped: {exc}"]}
+        observation = step.observation
+        if not reflection.on_track and reflection.next_hint:
+            observation += f" [reflection hint: {reflection.next_hint}]"
+        step = step.model_copy(update={"reflection": reflection, "observation": observation})
+        return {"steps": [*state["steps"][:-1], step]}
 
     def _critique(self, state: AgentState) -> dict:
         """Self-critique gate on a proposed final answer."""
