@@ -42,7 +42,7 @@ flowchart LR
     Agent -- "tool calls" --> Tools["ToolRegistry<br/>tools.py"]
     Agent -- "model replies" --> Parsing["Parsing<br/>parsing.py"]
     Agent --> Models["Models<br/>models.py"]
-    Agent -- "run results" --> Trace["Trace (JSONL)<br/>trace.py"]
+    CLI -- "--trace" --> Trace["Trace (JSONL)<br/>trace.py"]
 ```
 
 ### Agent flow
@@ -123,7 +123,7 @@ Python 3.11+. With [uv](https://docs.astral.sh/uv/) (or plain `pip install -e '.
 
 ```bash
 uv sync --extra dev           # or: python -m venv .venv && .venv/bin/pip install -e '.[dev]'
-uv run pytest                 # 48 tests, fully offline - no network, no API key
+uv run pytest                 # 46 tests, fully offline - no network, no API key
 uv run react-agent demo       # six scripted scenarios, offline
 ```
 

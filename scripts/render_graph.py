@@ -24,8 +24,12 @@ END = "<!-- flow-diagram:end -->"
 BLOCK = re.compile(re.escape(BEGIN) + r".*?" + re.escape(END), re.DOTALL)
 
 
+def build_agent() -> ReActAgent:
+    return ReActAgent(ScriptedLLM())
+
+
 def render_mermaid() -> str:
-    return ReActAgent(ScriptedLLM([])).graph.get_graph().draw_mermaid().strip()
+    return build_agent().graph.get_graph().draw_mermaid().strip()
 
 
 def render_block() -> str:
