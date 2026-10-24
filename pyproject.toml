@@ -5,7 +5,8 @@ description = "ReAct planning agent: observe-think-act-reflect loop with iterati
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "anthropic>=0.40",
+    "langgraph>=1.0",
+    "langchain-anthropic>=1.0",
     "pydantic>=2.5",
 ]
 

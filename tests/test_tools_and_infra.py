@@ -87,3 +87,27 @@ def test_demo_cli_runs_every_scenario_offline(capsys):
 
 def test_demo_unknown_scenario_exits_2(capsys):
     assert main(["demo", "bogus"]) == 2
+
+
+class _FakeChat:
+    def __init__(self, content=None, exc=None):
+        self.content, self.exc, self.kwargs = content, exc, None
+
+    def invoke(self, messages, **kwargs):
+        self.kwargs = kwargs
+        if self.exc:
+            raise self.exc
+        return type("M", (), {"content": self.content})()
+
+
+def test_anthropic_client_flattens_block_content_and_passes_max_tokens():
+    chat = _FakeChat([{"type": "text", "text": "he"}, {"type": "text", "text": "llo"}])
+    client = AnthropicClient(chat_model=chat)
+    assert client.complete(purpose="think", system="s", prompt="p", max_tokens=7) == "hello"
+    assert chat.kwargs == {"max_tokens": 7}
+
+
+def test_anthropic_client_normalises_provider_errors():
+    client = AnthropicClient(chat_model=_FakeChat(exc=TimeoutError("slow")))
+    with pytest.raises(LLMError, match="TimeoutError"):
+        client.complete(purpose="think", system="s", prompt="p", max_tokens=7)

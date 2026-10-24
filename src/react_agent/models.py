@@ -30,6 +30,8 @@ class AgentConfig(BaseModel):
     reflect: bool = True
     critique: bool = True
     max_tokens: int = Field(1024, ge=1)
+    recursion_limit: int | None = Field(
+        None, ge=1, description="LangGraph backstop; default derived from max_iterations.")
 
 
 class ToolCall(BaseModel):
@@ -77,3 +79,4 @@ class RunResult(BaseModel):
     revisions: int = 0
     elapsed_seconds: float = 0.0
     warnings: list[str] = Field(default_factory=list)
+    thread_id: str = ""

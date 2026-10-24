@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
 DEFAULT_MODEL = "claude-sonnet-5-5"
 
@@ -33,27 +33,30 @@ def load_dotenv(path: str | Path = ".env") -> None:
 
 
 class AnthropicClient:
-    """Claude via the official SDK. Any SDK failure is normalised to LLMError."""
+    """Claude via langchain-anthropic. Any provider failure is normalised to LLMError."""
 
-    def __init__(self, model: str | None = None, api_key: str | None = None) -> None:
-        import anthropic
+    def __init__(self, model: str | None = None, api_key: str | None = None,
+                 chat_model: Any = None) -> None:
+        self.model = model or os.environ.get("REACT_AGENT_MODEL") or DEFAULT_MODEL
+        if chat_model is not None:  # injectable for tests
+            self._chat = chat_model
+            return
+        from langchain_anthropic import ChatAnthropic
 
         key = api_key or os.environ.get("ANTHROPIC_API_KEY")
         if not key:
             raise LLMError("ANTHROPIC_API_KEY is not set (see .env.example)")
-        self.model = model or os.environ.get("REACT_AGENT_MODEL") or DEFAULT_MODEL
-        self._client = anthropic.Anthropic(api_key=key, max_retries=2, timeout=30.0)
+        self._chat = ChatAnthropic(model=self.model, api_key=key, max_retries=2, timeout=30.0)
 
     def complete(self, *, purpose: str, system: str, prompt: str, max_tokens: int) -> str:
-        import anthropic
+        from langchain_core.messages import HumanMessage, SystemMessage
 
         try:
-            resp = self._client.messages.create(
-                model=self.model,
-                max_tokens=max_tokens,
-                system=system,
-                messages=[{"role": "user", "content": prompt}],
-            )
-        except anthropic.AnthropicError as exc:
+            msg = self._chat.invoke([SystemMessage(system), HumanMessage(prompt)],
+                                    max_tokens=max_tokens)
+        except Exception as exc:  # SDK/network/auth errors all become one type
             raise LLMError(f"{type(exc).__name__}: {exc}") from exc
-        return "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
+        content = msg.content
+        if isinstance(content, str):
+            return content
+        return "".join(b.get("text", "") if isinstance(b, dict) else str(b) for b in content)

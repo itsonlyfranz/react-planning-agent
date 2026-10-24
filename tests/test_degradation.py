@@ -51,3 +51,23 @@ def test_result_is_serialisable(make_agent):
     agent, _ = make_agent({"think": [act("calculator", expression="2*2"),
                                      {"thought": "", "final_answer": "4"}]})
     assert '"stop_reason":"answered"' in agent.run("t").model_dump_json()
+
+
+def test_langgraph_recursion_limit_is_a_graceful_backstop(make_agent):
+    # Limit far below what max_iterations would allow: LangGraph aborts, agent degrades.
+    agent, _ = make_agent({"think": [act("calculator", expression=f"{n}+1") for n in range(50)],
+                           "degrade": ["partial after backstop"]},
+                          max_iterations=40, recursion_limit=6)
+    r = agent.run("t")
+    assert r.degraded and r.answer == "partial after backstop"
+    assert any("recursion limit" in w for w in r.warnings)
+    assert 0 < len(r.steps) < 40
+
+
+def test_every_run_is_checkpointed_per_thread(make_agent):
+    agent, _ = make_agent({"think": [act("calculator", expression="1+1"),
+                                     {"thought": "", "final_answer": "2"}]})
+    r = agent.run("t", thread_id="run-1")
+    assert r.thread_id == "run-1"
+    assert agent.checkpoints("run-1") >= 6  # gate/think/act/reflect/gate/think/critique/finish...
+    assert agent.checkpoints("never-ran") == 0
