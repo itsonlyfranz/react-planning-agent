@@ -11,7 +11,7 @@ Technologies: Python 3.11+, LangGraph, langchain-anthropic (Claude), Pydantic v2
 - In the `infinite-loop` demo the model repeats one call with a cap of 20 iterations; the loop guard warns on call 2 and stops on call 3 (3 of 20 turns used).
 - Self-critique gate on final answers with bounded revisions; low-confidence acceptance is surfaced in `warnings`, never silent.
 - Two-tier graceful degradation: LLM-written partial answer, then a deterministic fallback built only from successful observations. Every early exit carries a machine-readable `StopReason`.
-- LLM behind a one-method interface; the full suite (41 tests) and the six-scenario demo run offline with no API key.
+- LLM behind a one-method interface; the full test suite and the six-scenario demo run offline with no API key.
 
 ## Architecture
 
@@ -56,32 +56,13 @@ degrade: LLM best-effort partial answer; deterministic fallback if that fails to
 | Per-run checkpoints (LangGraph `MemorySaver`) | `ReActAgent.checkpoints` | `test_every_run_is_checkpointed_per_thread` |
 | Survives tool crashes, bad JSON, provider outages | `ToolRegistry.run`, `parsing.py` | `test_unknown_tool_is_an_observation_not_a_crash`, `test_llm_error_stops_cleanly` |
 
-```
-            ┌────────────────────────── ReActAgent.run(task) ──────────────────────────┐
-            │  for i in 1..max_iterations          (deadline checked every turn)        │
-            │                                                                           │
-  task ───▶ │  THINK   LLM -> {"thought", "action" | "final_answer"}   (parse errors    │
-            │            │                                              retried, bounded)│
-            │            ├─ final_answer ─▶ CRITIQUE ─ rejected? ─▶ revise (≤ max_revisions)
-            │            │                      └─ accepted ─────▶ RunResult(ANSWERED) │
-            │            └─ action ─▶ loop guard (same call ≥ repeat_limit?) ─▶ DEGRADE │
-            │  ACT/OBSERVE   ToolRegistry.run  (errors become observations)             │
-            │                 └ N consecutive errors ─────────────────────────▶ DEGRADE │
-            │  REFLECT       LLM -> {"on_track", "assessment", "next_hint"}             │
-            │                                                                           │
-            │  cap / timeout / LLM failure / parse failures ─────────────────▶ DEGRADE  │
-            └───────────────────────────────────────────────────────────────────────────┘
-   DEGRADE: ask the LLM for a best-effort partial answer from the scratchpad;
-            if that fails too, build one deterministically from successful observations.
-```
-
 ## Quickstart
 
 Python 3.11+. With [uv](https://docs.astral.sh/uv/) (or plain `pip install -e '.[dev]'`):
 
 ```bash
 uv sync --extra dev           # or: python -m venv .venv && .venv/bin/pip install -e '.[dev]'
-uv run pytest                 # 41 tests, fully offline - no network, no API key
+uv run pytest                 # 45 tests, fully offline - no network, no API key
 uv run react-agent demo       # six scripted scenarios, offline
 ```
 
