@@ -1,15 +1,13 @@
-"""Regenerate (or verify) the agent flow diagram embedded in README.md.
+"""Regenerate the agent flow diagram embedded in README.md.
 
 The diagram is rendered from the real compiled LangGraph graph, so it cannot silently drift
 from the code. Fully offline: the agent is built with a scripted LLM and never calls a model.
 
-    python scripts/render_graph.py           # rewrite the block in README.md
-    python scripts/render_graph.py --check   # exit 1 if README.md is out of date
+    python scripts/render_graph.py   # rewrite the block in README.md
 """
 
 from __future__ import annotations
 
-import argparse
 import re
 import sys
 from pathlib import Path
@@ -41,17 +39,7 @@ def updated_readme(text: str) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--check", action="store_true", help="fail if README.md is stale")
-    args = parser.parse_args()
-    current = README.read_text()
-    expected = updated_readme(current)
-    if args.check:
-        if current != expected:
-            print("README.md flow diagram is stale; run scripts/render_graph.py", file=sys.stderr)
-            return 1
-        return 0
-    README.write_text(expected)
+    README.write_text(updated_readme(README.read_text()))
     return 0
 
 

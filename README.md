@@ -87,6 +87,22 @@ graph TD;
 ```
 <!-- flow-diagram:end -->
 
+Conditional transitions:
+
+| From | To | When |
+|---|---|---|
+| `gate` | `think` | iteration cap and deadline not yet reached |
+| `gate` | `degrade` | iteration cap (`max_iterations`) or wall-clock deadline hit |
+| `think` | `act` | the reply parsed and names a tool call |
+| `think` | `critique` | the reply parsed and proposes a final answer |
+| `think` | `gate` | the reply was unparseable; retry with a correction note |
+| `think` | `degrade` | LLM call failed, or `max_consecutive_parse_failures` unparseable replies in a row |
+| `act` | `reflect` | tool ran (or errored) and reflection is enabled |
+| `act` | `gate` | tool ran (or errored) and reflection is disabled |
+| `act` | `degrade` | same call repeated `repeat_limit` times, or `max_consecutive_tool_errors` tool errors in a row |
+| `critique` | `finish` | answer accepted, critic disabled or unavailable (fails open), or `max_revisions` used up |
+| `critique` | `gate` | answer rejected with revisions left; the critic's issues are fed back |
+
 ## What it demonstrates
 
 | Capability | Where | Proved by |
