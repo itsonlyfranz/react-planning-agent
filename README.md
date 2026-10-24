@@ -1,10 +1,31 @@
 # ReAct Planning Agent
 
-A ReAct (reason + act) agent with an **observe → think → act → reflect** loop that is
-**provably bounded**: it cannot loop forever, it critiques its own answers, and when it has to
-give up it still returns something useful instead of crashing or hanging.
+**A ReAct agent with an observe → think → act → reflect loop that is bounded on every axis: it can't infinite loop, it critiques its own answers, and it degrades gracefully instead of crashing.**
 
-> **Shows:** you can build agents that don't infinite loop.
+Technologies: Python 3.11+, Anthropic Claude (official SDK), Pydantic v2, pytest · Category: AI agents · Shows: you can build agents that don't infinite loop.
+
+## Highlights
+
+- Five independent stop conditions (iteration cap, repeated-call detection, wall-clock deadline, tool-error streak, parse-failure streak), each covered by a test.
+- In the `infinite-loop` demo the model repeats one call with a cap of 20 iterations; the loop guard warns on call 2 and stops on call 3 (3 of 20 turns used).
+- Self-critique gate on final answers with bounded revisions; low-confidence acceptance is surfaced in `warnings`, never silent.
+- Two-tier graceful degradation: LLM-written partial answer, then a deterministic fallback built only from successful observations. Every early exit carries a machine-readable `StopReason`.
+- LLM behind a one-method interface; the full suite (37 tests) and the six-scenario demo run offline with no API key.
+
+## Architecture
+
+| Component | Responsibility |
+|---|---|
+| `ReActAgent` (`agent.py`) | Runs the bounded think/act/observe/reflect loop and all stop conditions |
+| `LLMClient` / `AnthropicClient` (`llm.py`) | One-method provider interface; Claude implementation normalises SDK errors to `LLMError` |
+| `ScriptedLLM` (`fake.py`) | Offline fake that replays queued responses per role and can simulate outages or a stuck model |
+| `ToolRegistry` (`tools.py`) | Dispatches tools; unknown tools, bad args and crashes become observations. Ships a safe AST calculator and a local fact lookup |
+| Parsing (`parsing.py`) | Tolerant JSON extraction and Pydantic validation of model replies |
+| Models (`models.py`) | `AgentConfig`, `Step`, `Critique`, `Reflection`, `RunResult`, `StopReason` |
+| Scenarios and CLI (`scenarios.py`, `cli.py`) | Six scripted demo scenarios and the `demo` / `run` commands |
+| Trace (`trace.py`) | Appends each run to a local JSONL file |
+
+Control flow:
 
 ## What it demonstrates
 
@@ -18,8 +39,6 @@ give up it still returns something useful instead of crashing or hanging.
 | Reflection after each action (advisory, fed back into the next prompt) | `_reflect` | `test_off_track_reflection_hint_reaches_next_prompt` |
 | Graceful degradation (LLM summary, then deterministic fallback) | `_degrade` | `tests/test_degradation.py` |
 | Survives tool crashes, bad JSON, provider outages | `ToolRegistry.run`, `parsing.py` | `test_unknown_tool_is_an_observation_not_a_crash`, `test_llm_error_stops_cleanly` |
-
-## Architecture
 
 ```
             ┌────────────────────────── ReActAgent.run(task) ──────────────────────────┐
@@ -39,11 +58,6 @@ give up it still returns something useful instead of crashing or hanging.
    DEGRADE: ask the LLM for a best-effort partial answer from the scratchpad;
             if that fails too, build one deterministically from successful observations.
 ```
-
-Modules (`src/react_agent/`): `models.py` (Pydantic v2: config, steps, results, `StopReason`),
-`llm.py` (client protocol + Claude client), `fake.py` (offline scripted LLM), `tools.py`
-(sandboxed calculator, fact lookup), `parsing.py`, `agent.py`, `scenarios.py`, `cli.py`,
-`trace.py` (JSONL run traces).
 
 ## Quickstart
 
