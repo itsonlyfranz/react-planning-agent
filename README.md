@@ -1,5 +1,7 @@
 # ReAct Planning Agent
 
+[![CI](https://github.com/itsonlyfranz/react-planning-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/itsonlyfranz/react-planning-agent/actions/workflows/ci.yml)
+
 **A ReAct agent with an observe → think → act → reflect loop that is bounded on every axis: it can't infinite loop, it critiques its own answers, and it degrades gracefully instead of crashing.**
 
 Technologies: Python 3.11+, LangGraph, langchain-anthropic (Claude), Pydantic v2, pytest · Category: AI agents · Shows: you can build agents that don't infinite loop.
